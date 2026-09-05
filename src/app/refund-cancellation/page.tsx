@@ -131,8 +131,7 @@ export default function RefundCancellationPage() {
               রিফান্ড বা বাতিল সম্পর্কে প্রশ্ন থাকলে:
             </p>
             <p>
-              <strong>ফোন:</strong> <a href="tel:01575008300">01575008300</a><br/>
-              <strong>সময়:</strong> সোমবার – শুক্রবার, সকাল ৯টা – সন্ধ্যা ६টা
+              <strong>ফোন:</strong> <a href="tel:01575008300">01575008300</a>
             </p>
           </section>
         </article>

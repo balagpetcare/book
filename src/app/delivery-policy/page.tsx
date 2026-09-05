@@ -123,8 +123,7 @@ export default function DeliveryPolicyPage() {
               ডেলিভারি সম্পর্কে কোনো প্রশ্ন থাকলে আমাদের সাথে যোগাযোগ করুন:
             </p>
             <p>
-              <strong>ফোন:</strong> <a href="tel:01575008300">01575008300</a><br/>
-              <strong>সময়:</strong> সোমবার – শুক্রবার, সকাল ৯টা – সন্ধ্যা ৬টা
+              <strong>ফোন:</strong> <a href="tel:01575008300">01575008300</a>
             </p>
           </section>
         </article>

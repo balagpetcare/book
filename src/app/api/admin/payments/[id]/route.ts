@@ -53,19 +53,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       if (stock < quantity) throw new Error(`Not enough stock. Available: ${stock}.`);
 
+      const confirmedAt = new Date();
+
       await tx.payment.update({
         where: { id },
-        data: { status: "VERIFIED", verifiedAt: new Date(), verifiedByAdminId: admin.id },
+        data: { status: "VERIFIED", verifiedAt: confirmedAt, verifiedByAdminId: admin.id },
       });
+
+      const eventId = `purchase_${payment.orderId}`;
+
+      // Build Meta Purchase event payload (to be sent asynchronously)
+      const purchasePayload = {
+        orderId: payment.orderId,
+        orderNumber: payment.order.orderNumber,
+        value: payment.order.grandTotal,
+        currency: "BDT",
+        quantity: payment.order.items.reduce((sum, item) => sum + item.quantity, 0),
+        productId: "book",
+        productName: payment.order.items[0]?.title,
+        timestamp: confirmedAt,
+        phone: payment.order.mobile,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fbp: (payment.order as any).fbp || undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fbc: (payment.order as any).fbc || undefined,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateData: any = {
+        status: "CONFIRMED",
+        confirmedAt,
+        paidAmount: payment.amount,
+        dueAmount: Math.max(0, payment.order.grandTotal - payment.amount),
+        metaPurchaseEventId: eventId,
+      };
 
       await tx.order.update({
         where: { id: payment.orderId },
-        data: {
-          status: "CONFIRMED",
-          confirmedAt: new Date(),
-          paidAmount: payment.amount,
-          dueAmount: Math.max(0, payment.order.grandTotal - payment.amount),
-        },
+        data: updateData,
       });
 
       await tx.inventoryTransaction.create({
@@ -74,6 +99,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           type: "PAYMENT_VERIFIED",
           quantityDelta: -quantity,
           note: `Payment ${payment.id} verified`,
+        },
+      });
+
+      // Create a ConversionEvent for async Meta CAPI processing
+      // This ensures the order conversion succeeds even if Meta is unavailable
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (tx as any).conversionEvent.create({
+        data: {
+          orderId: payment.orderId,
+          eventName: "Purchase",
+          eventId,
+          payload: JSON.stringify(purchasePayload),
+          status: "PENDING",
         },
       });
 

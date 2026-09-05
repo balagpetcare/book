@@ -162,6 +162,15 @@ model Order {
   createdByAdminId      String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+  fbclid                String?
+  fbp                   String?
+  fbc                   String?
+  utm_source            String?
+  utm_medium            String?
+  utm_campaign          String?
+  utm_content           String?
+  utm_term              String?
+  metaPurchaseEventId   String?                @unique
   items                 OrderItem[]
   payments              Payment[]
   inventoryTransactions InventoryTransaction[]
@@ -170,12 +179,14 @@ model Order {
   dispatchedByAdmin     AdminUser?             @relation("DispatchedOrders", fields: [dispatchedByAdminId], references: [id])
   createdByAdmin        AdminUser?             @relation("CreatedOrders", fields: [createdByAdminId], references: [id])
   printBatchItems       PrintBatchItem[]
+  conversionEvents      ConversionEvent[]
 
   @@index([mobile])
   @@index([status, createdAt])
   @@index([dispatchStatus, createdAt])
   @@index([trackingNumber])
   @@index([deliveryType])
+  @@index([metaPurchaseEventId])
 }
 
 model OrderItem {
@@ -299,4 +310,28 @@ enum OrderSource {
   WHATSAPP
   WALK_IN
   OTHER
+}
+
+enum ConversionEventStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model ConversionEvent {
+  id           String                @id @default(cuid())
+  orderId      String
+  eventName    String
+  eventId      String                @unique
+  payload      String
+  status       ConversionEventStatus @default(PENDING)
+  lastError    String?
+  attemptCount Int                   @default(0)
+  sentAt       DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  order        Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([orderId])
 }
