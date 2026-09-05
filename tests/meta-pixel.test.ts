@@ -6,10 +6,74 @@ import {
   trackInitiateCheckout,
   trackAddPaymentInfo,
 } from '../src/lib/meta-pixel';
+import { bootstrapMetaPixel, META_PIXEL_SCRIPT_SRC } from '../src/lib/meta-pixel-bootstrap';
+import type { MetaPixelFunction } from '../src/lib/meta-pixel';
+
+function mockFbq(handler: (...args: unknown[]) => void): MetaPixelFunction {
+  const fbq = handler as MetaPixelFunction;
+  fbq.push = fbq;
+  fbq.queue = [];
+  fbq.loaded = true;
+  fbq.version = '2.0';
+  return fbq;
+}
+
+describe('Canonical Meta Pixel bootstrap', () => {
+  const originalWindow = globalThis.window;
+  const originalDocument = globalThis.document;
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'window', { value: originalWindow, writable: true, configurable: true });
+    Object.defineProperty(globalThis, 'document', { value: originalDocument, writable: true, configurable: true });
+  });
+
+  function installFakeDom() {
+    const scripts: Array<{ src: string; async: boolean }> = [];
+    const fakeDocument = {
+      querySelector: () => scripts.find((script) => script.src === META_PIXEL_SCRIPT_SRC) || null,
+      createElement: () => ({ src: '', async: false }),
+      head: { appendChild: (script: { src: string; async: boolean }) => scripts.push(script) },
+    };
+    Object.defineProperty(globalThis, 'window', { value: { fbq: undefined, _fbq: undefined }, writable: true, configurable: true });
+    Object.defineProperty(globalThis, 'document', { value: fakeDocument, writable: true, configurable: true });
+    return scripts;
+  }
+
+  it('uses one canonical callable queue, one script, one init, and one initial PageView', () => {
+    const scripts = installFakeDom();
+    assert.strictEqual(bootstrapMetaPixel('1558416609371367'), true);
+    assert.strictEqual(bootstrapMetaPixel('1558416609371367'), false);
+
+    const fbq = globalThis.window.fbq as MetaPixelFunction;
+    assert.strictEqual(typeof fbq, 'function');
+    assert.strictEqual(globalThis.window._fbq, fbq);
+    assert.strictEqual(fbq.push, fbq);
+    assert.strictEqual(fbq.loaded, true);
+    assert.strictEqual(fbq.version, '2.0');
+    assert(Array.isArray(fbq.queue));
+    assert.deepStrictEqual(fbq.queue, [['init', '1558416609371367'], ['track', 'PageView']]);
+    assert.strictEqual(scripts.length, 1);
+    assert.strictEqual(scripts[0].src, META_PIXEL_SCRIPT_SRC);
+  });
+
+  it('does not bootstrap or initialize an already-existing callable fbq', () => {
+    const scripts = installFakeDom();
+    const calls: unknown[][] = [];
+    const existing = Object.assign((...args: unknown[]) => calls.push(args), { push: undefined!, queue: [], loaded: true, version: '2.0' }) as MetaPixelFunction;
+    existing.push = existing;
+    globalThis.window.fbq = existing;
+    globalThis.window._fbq = undefined;
+
+    assert.strictEqual(bootstrapMetaPixel('1558416609371367'), false);
+    assert.strictEqual(scripts.length, 0);
+    assert.strictEqual(globalThis.window._fbq, existing);
+    assert.deepStrictEqual(calls, []);
+  });
+});
 
 describe('Meta Pixel Helper Layer', () => {
   // Mock window.fbq
-  let originalFbq: ((action: string, ...args: unknown[]) => void) | undefined;
+  let originalFbq: MetaPixelFunction | undefined;
   let globalWindow: (typeof globalThis.window) | undefined;
 
   beforeEach(() => {
@@ -59,9 +123,9 @@ describe('Meta Pixel Helper Layer', () => {
   describe('Event tracking', () => {
     it('should call fbq with PageView event', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       trackPageView();
       assert.strictEqual(calls.length, 1);
@@ -70,9 +134,9 @@ describe('Meta Pixel Helper Layer', () => {
 
     it('should call fbq with ViewContent event', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       const params = {
         content_type: 'product',
@@ -90,9 +154,9 @@ describe('Meta Pixel Helper Layer', () => {
 
     it('should call fbq with InitiateCheckout event', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       const params = { value: 550, currency: 'BDT', num_items: 1 };
       trackInitiateCheckout(params);
@@ -105,9 +169,9 @@ describe('Meta Pixel Helper Layer', () => {
 
     it('should call fbq with AddPaymentInfo event', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       const params = { value: 550, currency: 'BDT' };
       trackAddPaymentInfo(params);
@@ -120,9 +184,9 @@ describe('Meta Pixel Helper Layer', () => {
 
     it('should handle empty parameters gracefully', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       trackViewContent();
       trackInitiateCheckout();
@@ -138,9 +202,9 @@ describe('Meta Pixel Helper Layer', () => {
   describe('No sensitive data exposure', () => {
     it('should not expose full delivery addresses in ViewContent', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       const params = {
         content_type: 'product',
@@ -157,9 +221,9 @@ describe('Meta Pixel Helper Layer', () => {
 
     it('should not expose transaction IDs in AddPaymentInfo', () => {
       const calls: unknown[][] = [];
-      globalThis.window.fbq = (...args: unknown[]) => {
+      globalThis.window.fbq = mockFbq((...args: unknown[]) => {
         calls.push(args);
-      };
+      });
 
       const params = { value: 550, currency: 'BDT' };
       trackAddPaymentInfo(params);

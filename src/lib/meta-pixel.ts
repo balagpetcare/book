@@ -5,6 +5,15 @@
  * This layer abstracts the direct fbq() calls and allows for validation/privacy considerations.
  */
 
+export interface MetaPixelFunction {
+  (action: string, ...args: unknown[]): void;
+  callMethod?: (...args: unknown[]) => void;
+  queue: unknown[][];
+  push: MetaPixelFunction;
+  loaded: boolean;
+  version: string;
+}
+
 interface ViewContentParams extends Record<string, unknown> {
   content_type?: string;
   content_ids?: string[];
@@ -26,7 +35,8 @@ interface AddPaymentInfoParams extends Record<string, unknown> {
 
 declare global {
   interface Window {
-    fbq?: (action: string, ...args: unknown[]) => void;
+    fbq?: MetaPixelFunction;
+    _fbq?: MetaPixelFunction;
   }
 }
 

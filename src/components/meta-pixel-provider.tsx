@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { trackPageView } from '@/lib/meta-pixel';
+import { bootstrapMetaPixel } from '@/lib/meta-pixel-bootstrap';
 import {
   ATTRIBUTION_COOKIE_NAME,
   ATTRIBUTION_MAX_AGE_SECONDS,
@@ -12,26 +13,12 @@ import {
   type AttributionSnapshot,
 } from '@/lib/attribution';
 
-interface FacebookPixelQueue {
-  push: (args: unknown[]) => void;
-  queue: unknown[];
-  loaded: boolean;
-  version: string;
-  callMethod?: (context: FacebookPixelQueue, ...args: unknown[]) => void;
-}
-
-/**
- * MetaPixelProvider initializes Meta Pixel on the client side and handles
- * PageView tracking for both initial load and Next.js client-side navigation.
- *
- * - Script injection happens only once via this component
- * - PageView is tracked on mount and on route changes
- * - If NEXT_PUBLIC_META_PIXEL_ID is not set, the component gracefully disables
- */
+/** Initializes the single browser Pixel queue and tracks one PageView per route. */
 export function MetaPixelProvider() {
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const initialPageViewHandled = useRef(false);
+  const previousPathname = useRef<string | null>(null);
 
-  // Initialize Meta Pixel script on mount
   useEffect(() => {
     const current = parseAttributionSnapshot(document.cookie.split('; ').find((cookie) => cookie.startsWith(`${ATTRIBUTION_COOKIE_NAME}=`))?.split('=').slice(1).join('='));
     const params = new URLSearchParams(window.location.search);
@@ -49,73 +36,22 @@ export function MetaPixelProvider() {
       document.cookie = `${ATTRIBUTION_COOKIE_NAME}=${encodeURIComponent(serializeAttributionSnapshot(snapshot))}; Max-Age=${ATTRIBUTION_MAX_AGE_SECONDS}; Path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
     }
 
-    // If no Pixel ID configured, skip initialization
-    if (!pixelId) {
-      return;
-    }
-
-    // Check if fbq is already initialized (prevent duplicate injection)
-    if (typeof window !== 'undefined' && window.fbq) {
-      return;
-    }
-
-    // Initialize Meta Pixel (official script)
-    (() => {
-      // Create the global fbq function
-      const fbq = (...args: unknown[]) => {
-        const fb = (window._fbq as unknown as FacebookPixelQueue) || {};
-        if ('callMethod' in fb && typeof fb.callMethod === 'function') {
-          fb.callMethod(fb as FacebookPixelQueue, ...args);
-        } else {
-          const queue = 'queue' in fb ? fb.queue : [];
-          (queue as unknown[]).push(args);
-        }
-      };
-
-      window.fbq = fbq as (action: string, ...args: unknown[]) => void;
-      const fbqObj = window._fbq || {
-        push: fbq,
-        queue: [],
-        loaded: true,
-        version: '2.0',
-      };
-      window._fbq = fbqObj as unknown as FacebookPixelQueue;
-
-      // Load the official Meta Pixel library script
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-
-      script.onload = (): void => {
-        // Initialize Pixel with ID
-        if (window.fbq) {
-          window.fbq('init', pixelId);
-          // Track initial PageView on script load
-          window.fbq('track', 'PageView');
-        }
-      };
-
-      document.head.appendChild(script);
-    })();
+    if (!pixelId || initialPageViewHandled.current) return;
+    bootstrapMetaPixel(pixelId);
+    // Existing callable fbq belongs to the sole loader and has already handled initial setup.
+    initialPageViewHandled.current = true;
   }, [pixelId]);
 
-  // Track PageView on route changes (Next.js client-side navigation)
   const pathname = usePathname();
   useEffect(() => {
-    if (!pixelId) {
+    if (previousPathname.current === null) {
+      previousPathname.current = pathname;
       return;
     }
-    // Only track if fbq is already initialized
-    if (typeof window !== 'undefined' && window.fbq) {
-      trackPageView();
-    }
+    if (!pixelId || pathname === previousPathname.current) return;
+    previousPathname.current = pathname;
+    if (typeof window !== 'undefined' && typeof window.fbq === 'function') trackPageView();
   }, [pathname, pixelId]);
 
   return null;
-}
-
-declare global {
-  interface Window {
-    _fbq?: FacebookPixelQueue;
-  }
 }
