@@ -14,6 +14,33 @@ export interface MetaPixelFunction {
   version: string;
 }
 
+type MetaPixelCall = [action: string, ...args: unknown[]];
+const pendingMetaPixelCalls: MetaPixelCall[] = [];
+
+export function dispatchMetaPixelCall(...args: MetaPixelCall): void {
+  if (typeof window === 'undefined') return;
+  if (typeof window.fbq === 'function') {
+    window.fbq(...args);
+    return;
+  }
+  pendingMetaPixelCalls.push(args);
+}
+
+export function flushQueuedMetaPixelCalls(): void {
+  if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
+  while (pendingMetaPixelCalls.length > 0) {
+    const call = pendingMetaPixelCalls.shift();
+    if (call) window.fbq(...call);
+  }
+}
+
+export function navigateAfterMetaPixelCall(url: string): void {
+  if (typeof window === 'undefined') return;
+  const navigate = () => { window.location.href = url; };
+  if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(navigate);
+  else window.setTimeout(navigate, 0);
+}
+
 interface ViewContentParams extends Record<string, unknown> {
   content_type?: string;
   content_ids?: string[];
@@ -45,9 +72,7 @@ declare global {
  * Called on initial page load and subsequent Next.js navigation.
  */
 export function trackPageView(): void {
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', 'PageView');
-  }
+  dispatchMetaPixelCall('track', 'PageView');
 }
 
 /**
@@ -55,9 +80,7 @@ export function trackPageView(): void {
  * Include content information if available.
  */
 export function trackViewContent(params?: ViewContentParams): void {
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', 'ViewContent', params ?? {});
-  }
+  dispatchMetaPixelCall('track', 'ViewContent', params ?? {});
 }
 
 /**
@@ -66,9 +89,7 @@ export function trackViewContent(params?: ViewContentParams): void {
  * not on validation failures or unrelated button clicks.
  */
 export function trackInitiateCheckout(params?: InitiateCheckoutParams): void {
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', 'InitiateCheckout', params ?? {});
-  }
+  dispatchMetaPixelCall('track', 'InitiateCheckout', params ?? {});
 }
 
 /**
@@ -77,7 +98,5 @@ export function trackInitiateCheckout(params?: InitiateCheckoutParams): void {
  * reaches the payment step, not merely because a button was clicked.
  */
 export function trackAddPaymentInfo(params?: AddPaymentInfoParams): void {
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', 'AddPaymentInfo', params ?? {});
-  }
+  dispatchMetaPixelCall('track', 'AddPaymentInfo', params ?? {});
 }

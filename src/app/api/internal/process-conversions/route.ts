@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { buildPurchaseEventPayload, sendCapiEvent } from '@/lib/meta-capi';
+import { buildPurchaseEventPayload, normalizeStoredConversionTimestamp, sendCapiEvent } from '@/lib/meta-capi';
 
 export const runtime = 'nodejs';
 
@@ -57,11 +57,13 @@ export async function POST(request: Request) {
 
     for (const event of pendingEvents) {
       try {
-        const payload = JSON.parse(event.payload);
+        const payload = JSON.parse(event.payload) as Record<string, unknown>;
+        const timestamp = normalizeStoredConversionTimestamp(payload);
 
         const capiPayload = buildPurchaseEventPayload({
           ...payload,
-        });
+          timestamp,
+        } as Parameters<typeof buildPurchaseEventPayload>[0]);
 
         const sentEventId = await sendCapiEvent(capiPayload);
 

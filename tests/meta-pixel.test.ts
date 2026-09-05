@@ -1,6 +1,9 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import {
+  dispatchMetaPixelCall,
+  flushQueuedMetaPixelCalls,
+  navigateAfterMetaPixelCall,
   trackPageView,
   trackViewContent,
   trackInitiateCheckout,
@@ -68,6 +71,22 @@ describe('Canonical Meta Pixel bootstrap', () => {
     assert.strictEqual(scripts.length, 0);
     assert.strictEqual(globalThis.window._fbq, existing);
     assert.deepStrictEqual(calls, []);
+  });
+
+  it('queues funnel calls until fbq exists and defers navigation by one frame', () => {
+    installFakeDom();
+    const queuedCalls: unknown[][] = [];
+    dispatchMetaPixelCall('track', 'ViewContent', { value: 350 });
+    const ready = mockFbq((...args: unknown[]) => queuedCalls.push(args));
+    globalThis.window.fbq = ready;
+    globalThis.window.requestAnimationFrame = (callback: FrameRequestCallback) => { callback(0); return 1; };
+    const location = { href: '' };
+    Object.defineProperty(globalThis.window, 'location', { value: location, configurable: true });
+
+    flushQueuedMetaPixelCalls();
+    navigateAfterMetaPixelCall('/order/next');
+    assert.deepStrictEqual(queuedCalls, [['track', 'ViewContent', { value: 350 }]]);
+    assert.equal(location.href, '/order/next');
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { trackAddPaymentInfo } from "@/lib/meta-pixel";
+import { navigateAfterMetaPixelCall, trackAddPaymentInfo } from "@/lib/meta-pixel";
 
 type Props = {
   orderNumber: string;
@@ -39,6 +39,7 @@ export function PaymentForm({
   const [preview, setPreview] = useState("");
   const [fileName, setFileName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const paymentInfoSent = useRef(false);
 
   async function copy(value: string, key: string) {
     try {
@@ -64,8 +65,11 @@ export function PaymentForm({
       setBusy(false);
       return;
     }
-    trackAddPaymentInfo({ value: amount, currency: 'BDT' });
-    window.location.href = "/order/success/" + j.orderNumber;
+    if (!paymentInfoSent.current) {
+      paymentInfoSent.current = true;
+      trackAddPaymentInfo({ value: amount, currency: 'BDT' });
+    }
+    navigateAfterMetaPixelCall("/order/success/" + j.orderNumber);
   }
 
   function chooseFile(e: React.ChangeEvent<HTMLInputElement>) {

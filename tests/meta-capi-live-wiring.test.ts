@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ATTRIBUTION_COOKIE_NAME, buildFbcFromFbclid, mergeAttribution } from '@/lib/attribution';
-import { buildPurchaseEventPayload, extractAttributionFromRequest } from '@/lib/meta-capi';
+import { buildPurchaseEventPayload, extractAttributionFromRequest, normalizeStoredConversionTimestamp } from '@/lib/meta-capi';
 import { SITE_ORIGIN } from '@/lib/site-config';
 
 test('landing attribution survives navigation through the first-party snapshot', () => {
@@ -41,4 +41,18 @@ test('Purchase payload contains canonical URL, order value, identifiers, and con
   assert.equal(payload.user_data.client_user_agent, 'Test Browser');
   assert.equal(payload.user_data.client_ip_address, '203.0.113.10');
   assert.equal(payload.event_source_url.includes('book.example.com'), false);
+});
+
+test('JSON round-trip timestamp is normalized before Purchase payload construction', () => {
+  const parsed = JSON.parse(JSON.stringify({ timestamp: new Date('2026-09-05T12:34:56.000Z') })) as Record<string, unknown>;
+  const timestamp = normalizeStoredConversionTimestamp(parsed);
+  const payload = buildPurchaseEventPayload({ orderId: 'order-json', orderNumber: 'BG-JSON', value: 350, currency: 'BDT', quantity: 1, timestamp, phone: '01712345678' });
+  assert.equal(payload.event_name, 'Purchase');
+  assert.equal(payload.event_time, 1788611696);
+  assert.equal(payload.event_id, 'purchase_order-json');
+  assert.equal(payload.event_source_url, 'https://book.balagpetclinic.com/order/BG-JSON');
+});
+
+test('invalid stored conversion timestamp is rejected instead of replaced', () => {
+  assert.throws(() => normalizeStoredConversionTimestamp({ timestamp: 'not-a-date' }), /invalid timestamp/);
 });

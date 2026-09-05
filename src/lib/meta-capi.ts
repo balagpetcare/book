@@ -27,6 +27,15 @@ import { SITE_ORIGIN } from './site-config';
 export const CAPI_REQUEST_TIMEOUT_MS = 10000;
 export const CAPI_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v26.0';
 
+export function normalizeStoredConversionTimestamp(payload: Record<string, unknown>): Date {
+  const rawTimestamp = payload.timestamp;
+  const timestamp = new Date(rawTimestamp instanceof Date ? rawTimestamp.getTime() : rawTimestamp as string | number);
+  if (Number.isNaN(timestamp.getTime())) {
+    throw new Error('Stored conversion event has an invalid timestamp');
+  }
+  return timestamp;
+}
+
 interface CapiUserData {
   ph?: string;
   fbp?: string;

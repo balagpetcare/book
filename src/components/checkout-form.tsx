@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Pricing } from "@/lib/pricing";
-import { trackInitiateCheckout, trackViewContent } from "@/lib/meta-pixel";
+import { navigateAfterMetaPixelCall, trackInitiateCheckout, trackViewContent } from "@/lib/meta-pixel";
 
 const taka = (n: number) => "৳" + n.toLocaleString("bn-BD");
 
@@ -49,8 +49,12 @@ export function CheckoutForm({
   const [plan, setPlan] = useState<"PREPAID_350" | "COURIER_ADVANCE_100">("PREPAID_350");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const viewContentSent = useRef(false);
+  const initiateCheckoutSent = useRef(false);
 
   useEffect(() => {
+    if (viewContentSent.current) return;
+    viewContentSent.current = true;
     trackViewContent({
       content_type: 'product',
       content_name: bookTitle,
@@ -78,8 +82,11 @@ export function CheckoutForm({
       setBusy(false);
       return;
     }
-    trackInitiateCheckout({ value: total, currency: 'BDT', num_items: 1 });
-    window.location.href = "/order/" + result.orderNumber + "/payment";
+    if (!initiateCheckoutSent.current) {
+      initiateCheckoutSent.current = true;
+      trackInitiateCheckout({ value: total, currency: 'BDT', num_items: 1 });
+    }
+    navigateAfterMetaPixelCall("/order/" + result.orderNumber + "/payment");
   }
 
   const amount = (label: string, value: number) => (

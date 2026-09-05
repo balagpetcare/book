@@ -1,4 +1,5 @@
 import type { MetaPixelFunction } from './meta-pixel';
+import { flushQueuedMetaPixelCalls } from './meta-pixel';
 
 export const META_PIXEL_SCRIPT_SRC = 'https://connect.facebook.net/en_US/fbevents.js';
 
@@ -8,6 +9,7 @@ export function bootstrapMetaPixel(pixelId: string): boolean {
   if (typeof window.fbq === 'function') {
     // Keep the legacy alias canonical even when another loader created fbq first.
     window._fbq = window.fbq;
+    flushQueuedMetaPixelCalls();
     return false;
   }
 
@@ -32,5 +34,6 @@ export function bootstrapMetaPixel(pixelId: string): boolean {
 
   fbq('init', pixelId);
   fbq('track', 'PageView');
+  flushQueuedMetaPixelCalls();
   return true;
 }
