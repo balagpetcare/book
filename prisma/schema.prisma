@@ -171,6 +171,8 @@ model Order {
   utm_content           String?
   utm_term              String?
   metaPurchaseEventId   String?                @unique
+  customerUserAgent     String?
+  customerIpAddress     String?
   items                 OrderItem[]
   payments              Payment[]
   inventoryTransactions InventoryTransaction[]

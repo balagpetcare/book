@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { MetaPixelProvider } from '@/components/meta-pixel-provider';
 import { Footer } from '@/components/footer';
+import { SITE_ORIGIN } from '@/lib/site-config';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://book.balagpetclinic.com'),
+  metadataBase: new URL(SITE_ORIGIN),
   title: 'বিড়াল পালন ও চিকিৎসা | Dr. Bala G',
   description:
     'বিড়ালের রোগ, কারণ, লক্ষণ, প্রতিরোধ, ব্যবস্থাপনা ও চিকিৎসা নিয়ে ৩२६ পৃষ্ঠার ব্যবহারিক বাংলা গাইড।',
@@ -20,14 +21,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'bn_BD',
-    url: 'https://book.balagpetclinic.com',
+    url: SITE_ORIGIN,
     siteName: 'বিড়াল পালন ও চিকিৎসা',
     title: 'বিড়াল পালন ও চিকিৎসা | Dr. Bala G',
     description:
       'বিড়ালের রোগ, কারণ, লক্ষণ, প্রতিরোধ, ব্যবস্থাপনা ও চিকিৎসা নিয়ে ৩२६ পৃষ্ঠার ব্যবহারিক বাংলা গাইড।',
     images: [
       {
-        url: 'https://book.balagpetclinic.com/book-cover-placeholder.svg',
+        url: `${SITE_ORIGIN}/book-cover-placeholder.svg`,
         width: 330,
         height: 500,
         alt: 'বিড়াল পালন ও চিকিৎসা বইয়ের প্রচ্ছদ',
@@ -39,10 +40,10 @@ export const metadata: Metadata = {
     title: 'বিড়াল পালন ও চিকিৎসা | Dr. Bala G',
     description:
       'বিড়ালের রোগ, কারণ, লক্ষণ, প্রতিরোধ, ব্যবস্থাপনা ও চিকিৎসা নিয়ে ৩२६ পৃষ্ঠার ব্যবহারিক বাংলা গাইড।',
-    images: ['https://book.balagpetclinic.com/book-cover-placeholder.svg'],
+    images: [`${SITE_ORIGIN}/book-cover-placeholder.svg`],
   },
   alternates: {
-    canonical: 'https://book.balagpetclinic.com',
+    canonical: SITE_ORIGIN,
   },
 };
 

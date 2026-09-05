@@ -95,6 +95,10 @@ export default function PrivacyPage() {
               <strong>ফোন:</strong> <a href="tel:01575008300">01575008300</a>
             </p>
           </section>
+          <section>
+            <h2>Advertising attribution and conversion measurement</h2>
+            <p>We may retain first-party attribution identifiers, browser user-agent, and a trusted proxy-provided client IP with an order to measure advertising conversions. Meta receives only event-matching fields; delivery addresses, payment proof, and transaction IDs are not sent.</p>
+          </section>
         </article>
 
         <nav className="policy-nav">

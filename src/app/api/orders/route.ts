@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeBangladeshMobile, orderCaptureSchema } from "@/lib/order-validation";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
 import { calculatePricing } from "@/lib/pricing";
-import { extractAttributionFromRequest, extractUtmParams } from "@/lib/meta-capi";
+import { extractAttributionFromRequest } from "@/lib/meta-capi";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   if (!rateLimit(`order:${requestIp(request)}`, 10, 60 * 60 * 1000)) return NextResponse.json({ error: "Too many order attempts. Please try again later." }, { status: 429 });
@@ -29,7 +29,6 @@ export async function POST(request: Request) {
 
     // Capture attribution from request
     const attribution = extractAttributionFromRequest(request);
-    const utmParams = extractUtmParams(request.url);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orderData: any = {
@@ -61,11 +60,13 @@ export async function POST(request: Request) {
       fbclid: attribution.fbclid || null,
       fbp: attribution.fbp || null,
       fbc: attribution.fbc || null,
-      utm_source: utmParams.utm_source || null,
-      utm_medium: utmParams.utm_medium || null,
-      utm_campaign: utmParams.utm_campaign || null,
-      utm_content: utmParams.utm_content || null,
-      utm_term: utmParams.utm_term || null,
+      utm_source: attribution.utm_source || null,
+      utm_medium: attribution.utm_medium || null,
+      utm_campaign: attribution.utm_campaign || null,
+      utm_content: attribution.utm_content || null,
+      utm_term: attribution.utm_term || null,
+      customerUserAgent: attribution.userAgent || null,
+      customerIpAddress: attribution.clientIp || null,
       items: {
         create: {
           title: settings.title,

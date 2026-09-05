@@ -61,8 +61,6 @@ export async function POST(request: Request) {
 
         const capiPayload = buildPurchaseEventPayload({
           ...payload,
-          userAgent: undefined,
-          clientIp: undefined,
         });
 
         const sentEventId = await sendCapiEvent(capiPayload);

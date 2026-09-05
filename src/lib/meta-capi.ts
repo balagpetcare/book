@@ -11,9 +11,21 @@
  */
 
 import crypto from 'crypto';
+import { isIP } from 'net';
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  buildFbcFromFbclid,
+  isSafeAttributionValue,
+  isValidFbc,
+  isValidFbp,
+  mergeAttribution,
+  parseAttributionSnapshot,
+  type AttributionSnapshot,
+} from './attribution';
+import { SITE_ORIGIN } from './site-config';
 
 export const CAPI_REQUEST_TIMEOUT_MS = 10000;
-export const CAPI_GRAPH_API_VERSION = 'v18.0';
+export const CAPI_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v26.0';
 
 interface CapiUserData {
   ph?: string;
@@ -161,7 +173,7 @@ export function buildPurchaseEventPayload(options: {
     event_time: eventTime,
     event_id: eventId,
     action_source: 'website',
-    event_source_url: `https://book.example.com/order/${options.orderNumber}`,
+    event_source_url: `${SITE_ORIGIN}/order/${options.orderNumber}`,
     user_data: userData,
     custom_data: customData,
     test_event_code: process.env.META_CAPI_TEST_EVENT_CODE,
@@ -254,7 +266,7 @@ export function extractUtmParams(url: string | null | undefined): Record<string,
   if (!url) return {};
 
   try {
-    const urlObj = new URL(url, 'https://example.com');
+    const urlObj = new URL(url, SITE_ORIGIN);
     const result: Record<string, string | undefined> = {};
 
     const utm_source = urlObj.searchParams.get('utm_source');
@@ -286,29 +298,57 @@ export function extractAttributionFromRequest(request: Request): {
   fbclid?: string;
   fbp?: string;
   fbc?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
   userAgent?: string;
   clientIp?: string;
 } {
-  const attribution: Record<string, string | undefined> = {};
+  const attribution: AttributionSnapshot & { userAgent?: string; clientIp?: string } = {};
+
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies: Record<string, string> = {};
+  for (const part of cookieHeader.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0) continue;
+    const name = part.slice(0, separator).trim();
+    const value = part.slice(separator + 1).trim();
+    try {
+      cookies[name] = decodeURIComponent(value);
+    } catch {
+      // Ignore malformed cookie values.
+    }
+  }
+  const stored = parseAttributionSnapshot(cookies[ATTRIBUTION_COOKIE_NAME]);
+  const incoming: AttributionSnapshot = { ...stored };
 
   // Extract fbclid, fbp, fbc from URL if present
   try {
     const url = new URL(request.url);
-    const fbclid = url.searchParams.get('fbclid');
-    if (fbclid) attribution.fbclid = fbclid;
-
-    const fbp = url.searchParams.get('_fbp');
-    if (fbp) attribution.fbp = fbp;
-
-    const fbc = url.searchParams.get('_fbc');
-    if (fbc) attribution.fbc = fbc;
+    for (const key of ['fbclid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const) {
+      const value = url.searchParams.get(key);
+      if (value && isSafeAttributionValue(value)) incoming[key] = value;
+    }
   } catch {
     // Ignore URL parse errors
   }
 
+  const fbp = cookies._fbp;
+  const fbc = cookies._fbc;
+  if (isValidFbp(fbp)) incoming.fbp = fbp;
+  if (isValidFbc(fbc)) incoming.fbc = fbc;
+  const merged = mergeAttribution({}, incoming);
+  Object.assign(attribution, merged);
+  if (attribution.fbclid && !isValidFbc(attribution.fbc)) {
+    const constructedFbc = buildFbcFromFbclid(attribution.fbclid);
+    if (constructedFbc) attribution.fbc = constructedFbc;
+  }
+
   // Extract user agent
   const userAgent = request.headers.get('user-agent');
-  if (userAgent) {
+  if (userAgent && userAgent.length <= 1000 && !/[\u0000-\u001f\u007f]/.test(userAgent)) {
     attribution.userAgent = userAgent;
   }
 
@@ -326,8 +366,8 @@ export function extractAttributionFromRequest(request: Request): {
       clientIp = xRealIp;
     }
   }
-  if (clientIp) {
-    attribution.clientIp = clientIp;
+  if (clientIp && isIP(clientIp.trim())) {
+    attribution.clientIp = clientIp.trim();
   }
 
   return attribution;

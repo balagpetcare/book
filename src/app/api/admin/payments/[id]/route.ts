@@ -77,6 +77,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         fbp: (payment.order as any).fbp || undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         fbc: (payment.order as any).fbc || undefined,
+        userAgent: payment.order.customerUserAgent,
+        clientIp: payment.order.customerIpAddress,
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
