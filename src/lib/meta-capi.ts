@@ -53,7 +53,7 @@ interface CapiCustomData {
   num_items?: number;
 }
 
-interface CapiEventPayload {
+export interface CapiEventPayload {
   event_name: string;
   event_time: number;
   event_id: string;
@@ -61,8 +61,11 @@ interface CapiEventPayload {
   event_source_url?: string;
   user_data: CapiUserData;
   custom_data: CapiCustomData;
-  test_event_code?: string;
 }
+
+export type CapiSendResult =
+  | { ok: true; eventId: string; eventsReceived: number; fbtraceId?: string }
+  | { ok: false; error: string };
 
 /**
  * Normalize a phone number according to Meta requirements for hashing.
@@ -185,8 +188,29 @@ export function buildPurchaseEventPayload(options: {
     event_source_url: `${SITE_ORIGIN}/order/${options.orderNumber}`,
     user_data: userData,
     custom_data: customData,
-    test_event_code: process.env.META_CAPI_TEST_EVENT_CODE,
   };
+}
+
+export function buildCapiRequestBody(payload: CapiEventPayload, token: string): Record<string, unknown> {
+  const testEventCode = process.env.META_CAPI_TEST_EVENT_CODE?.trim();
+  return {
+    data: [payload],
+    access_token: token,
+    ...(testEventCode ? { test_event_code: testEventCode } : {}),
+  };
+}
+
+function readMetaError(data: unknown, status: number): string {
+  const response = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+  const error = response.error && typeof response.error === 'object' ? response.error as Record<string, unknown> : {};
+  const details = [
+    typeof error.message === 'string' ? error.message : 'Meta API request failed',
+    typeof error.code === 'number' || typeof error.code === 'string' ? `code=${error.code}` : null,
+    typeof error.error_subcode === 'number' || typeof error.error_subcode === 'string' ? `subcode=${error.error_subcode}` : null,
+    typeof error.type === 'string' ? `type=${error.type}` : null,
+    typeof response.fbtrace_id === 'string' ? `fbtrace_id=${response.fbtrace_id}` : null,
+  ].filter((detail): detail is string => Boolean(detail));
+  return `Meta API HTTP ${status}: ${details.join('; ')}`;
 }
 
 /**
@@ -195,20 +219,21 @@ export function buildPurchaseEventPayload(options: {
  *
  * Failures are logged but do NOT throw - the order transaction must not fail due to Meta issues.
  */
-export async function sendCapiEvent(payload: CapiEventPayload): Promise<string | null> {
+export async function sendCapiEvent(payload: CapiEventPayload): Promise<CapiSendResult> {
   if (!isCapiConfigured()) {
     console.warn('[Meta CAPI] Conversions API not configured (META_CAPI_ACCESS_TOKEN missing)');
-    return null;
+    return { ok: false, error: 'Meta CAPI is not configured' };
   }
 
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
   if (!pixelId) {
     console.warn('[Meta CAPI] Meta Pixel ID not configured (NEXT_PUBLIC_META_PIXEL_ID missing)');
-    return null;
+    return { ok: false, error: 'Meta Pixel ID is not configured' };
   }
 
   const url = `https://graph.facebook.com/${CAPI_GRAPH_API_VERSION}/${pixelId}/events`;
   const token = process.env.META_CAPI_ACCESS_TOKEN;
+  if (!token) return { ok: false, error: 'Meta CAPI is not configured' };
 
   try {
     const controller = new AbortController();
@@ -219,10 +244,7 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<string |
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        data: [payload],
-        access_token: token,
-      }),
+      body: JSON.stringify(buildCapiRequestBody(payload, token)),
       signal: controller.signal,
     });
 
@@ -231,40 +253,50 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<string |
     const data = await response.json();
 
     if (!response.ok) {
+      const error = readMetaError(data, response.status);
       console.error('[Meta CAPI] API error', {
         status: response.status,
         eventId: payload.event_id,
-        error: data?.error?.message || 'Unknown error',
+        error,
       });
-      return null;
+      return { ok: false, error };
     }
 
-    if (data.events?.[0]?.event_id) {
+    const eventsReceived = data && typeof data === 'object' && 'events_received' in data
+      ? Number((data as { events_received?: unknown }).events_received)
+      : Number.NaN;
+    const fbtraceId = data && typeof data === 'object' && typeof (data as { fbtrace_id?: unknown }).fbtrace_id === 'string'
+      ? (data as { fbtrace_id: string }).fbtrace_id
+      : undefined;
+    if (Number.isFinite(eventsReceived) && eventsReceived >= 1) {
       console.log('[Meta CAPI] Event sent successfully', {
         eventId: payload.event_id,
-        metaEventId: data.events[0].event_id,
+        eventsReceived,
+        fbtraceId,
       });
-      return data.events[0].event_id;
+      return { ok: true, eventId: payload.event_id, eventsReceived, fbtraceId };
     }
 
+    const error = 'Meta API 2xx response did not report events_received >= 1';
     console.error('[Meta CAPI] Unexpected response format', {
       eventId: payload.event_id,
-      response: data,
+      error,
     });
-    return null;
+    return { ok: false, error };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       console.error('[Meta CAPI] Request timeout', {
         eventId: payload.event_id,
         timeout: CAPI_REQUEST_TIMEOUT_MS,
       });
+      return { ok: false, error: 'Meta API request timed out' };
     } else {
       console.error('[Meta CAPI] Request failed', {
         eventId: payload.event_id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      return { ok: false, error: 'Meta API request failed' };
     }
-    return null;
   }
 }
 

@@ -14,6 +14,15 @@ export const runtime = 'nodejs';
 const BATCH_SIZE = 25;
 const MAX_RETRIES = 3;
 
+export function getConversionFailureState(attemptCount: number, error: string) {
+  const nextAttemptCount = attemptCount + 1;
+  return {
+    attemptCount: nextAttemptCount,
+    status: nextAttemptCount >= MAX_RETRIES ? 'FAILED' as const : 'PENDING' as const,
+    lastError: error,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     // Verify this is an internal request - requires INTERNAL_API_KEY
@@ -65,9 +74,9 @@ export async function POST(request: Request) {
           timestamp,
         } as Parameters<typeof buildPurchaseEventPayload>[0]);
 
-        const sentEventId = await sendCapiEvent(capiPayload);
+        const sendResult = await sendCapiEvent(capiPayload);
 
-        if (sentEventId) {
+        if (sendResult.ok) {
           // Update as sent
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (prisma as any).conversionEvent.update({
@@ -81,16 +90,16 @@ export async function POST(request: Request) {
           results.push({
             eventId: event.eventId,
             status: 'sent',
-            metaEventId: sentEventId,
+            metaEventId: sendResult.eventId,
           });
         } else {
+          const failureState = getConversionFailureState(event.attemptCount, sendResult.error);
           // Update attempt count and error
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (prisma as any).conversionEvent.update({
             where: { id: event.id },
             data: {
-              attemptCount: { increment: 1 },
-              lastError: 'Meta API returned error or timeout',
+              ...failureState,
             },
           });
 
@@ -107,12 +116,12 @@ export async function POST(request: Request) {
           error: errorMessage,
         });
 
+        const failureState = getConversionFailureState(event.attemptCount, errorMessage);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (prisma as any).conversionEvent.update({
           where: { id: event.id },
           data: {
-            attemptCount: { increment: 1 },
-            lastError: errorMessage,
+            ...failureState,
           },
         });
 
