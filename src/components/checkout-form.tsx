@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Pricing } from "@/lib/pricing";
+import { trackInitiateCheckout, trackViewContent } from "@/lib/meta-pixel";
 
 const taka = (n: number) => "৳" + n.toLocaleString("bn-BD");
 
@@ -45,10 +46,18 @@ export function CheckoutForm({
   pricing: Pricing;
   bookTitle: string;
 }) {
-  void bookTitle;
   const [plan, setPlan] = useState<"PREPAID_350" | "COURIER_ADVANCE_100">("PREPAID_350");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    trackViewContent({
+      content_type: 'product',
+      content_name: bookTitle,
+      value: pricing.bookPrice,
+      currency: 'BDT',
+    });
+  }, [bookTitle, pricing.bookPrice]);
 
   const isPost = plan === "PREPAID_350";
   const total = isPost ? pricing.postTotal : pricing.courierTotal;
@@ -69,6 +78,7 @@ export function CheckoutForm({
       setBusy(false);
       return;
     }
+    trackInitiateCheckout({ value: total, currency: 'BDT', num_items: 1 });
     window.location.href = "/order/" + result.orderNumber + "/payment";
   }
 

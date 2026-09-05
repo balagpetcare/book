@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useRef, useState } from "react";
+import { trackAddPaymentInfo } from "@/lib/meta-pixel";
 
 type Props = {
   orderNumber: string;
@@ -63,6 +64,7 @@ export function PaymentForm({
       setBusy(false);
       return;
     }
+    trackAddPaymentInfo({ value: amount, currency: 'BDT' });
     window.location.href = "/order/success/" + j.orderNumber;
   }
 
