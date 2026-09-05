@@ -1,0 +1,4 @@
+import { prisma } from "@/lib/prisma";
+import { InventoryForm } from "@/components/inventory-form";
+export const dynamic = "force-dynamic";
+export default async function InventoryPage() { const [sum, rows] = await Promise.all([prisma.inventoryTransaction.aggregate({ _sum: { quantityDelta: true } }), prisma.inventoryTransaction.findMany({ orderBy: { createdAt: "desc" }, take: 100 })]); return <><div className="admin-header"><div><p className="eyebrow">STOCK LEDGER</p><h1>Inventory</h1></div><strong className="big-stock">{Math.max(0, sum._sum.quantityDelta ?? 0)} available</strong></div><InventoryForm /><div className="admin-table">{rows.map(r => <div className="admin-row" key={r.id}><div><b>{r.type}</b><span>{r.note || "Ledger entry"}</span></div><strong>{r.quantityDelta > 0 ? "+" : ""}{r.quantityDelta}</strong></div>)}</div></>; }

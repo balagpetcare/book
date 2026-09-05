@@ -1,0 +1,4 @@
+import { prisma } from "@/lib/prisma";
+import { AdminAction } from "@/components/admin-action";
+export const dynamic = "force-dynamic";
+export default async function ReviewsPage() { const reviews = await prisma.review.findMany({ include: { order: { select: { status: true } } }, orderBy: { createdAt: "desc" } }); return <><div className="admin-header"><div><p className="eyebrow">CUSTOMER FEEDBACK</p><h1>Reviews</h1></div></div><div className="admin-table">{reviews.map(r => <div className="admin-row" key={r.id}><div><b>{r.customerName} · {r.rating}/5</b><span>{r.comment || "No comment"} · {r.order.status}</span></div><AdminAction endpoint={`/api/admin/reviews/${r.id}`} action={r.status === "APPROVED" ? "HIDE" : "APPROVE"} label={r.status === "APPROVED" ? "Hide" : "Approve"} /></div>)}{!reviews.length && <p className="empty-admin">No reviews yet.</p>}</div></>; }

@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin-auth";
+import { reviewActionSchema } from "@/lib/admin-validation";
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { const admin = await requireAdmin(); if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); const { id } = await params; const parsed = reviewActionSchema.safeParse(await request.json().catch(() => ({}))); if (!parsed.success) return NextResponse.json({ error: "Invalid review action." }, { status: 400 }); const body = parsed.data; const approved = body.action === "APPROVE"; const review = await prisma.review.update({ where: { id }, data: { isApproved: approved, status: approved ? "APPROVED" : "HIDDEN" } }); await prisma.adminAuditLog.create({ data: { adminUserId: admin.id, action: approved ? "APPROVE_REVIEW" : "HIDE_REVIEW", entityType: "Review", entityId: id } }); return NextResponse.json({ review }); }

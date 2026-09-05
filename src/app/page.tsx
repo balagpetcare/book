@@ -1,69 +1,68 @@
-import Image from "next/image";
+import { BOOK_CONTENT, BOOK_OFFER, HERO_CONTENT } from "@/data/book";
+import { AuthorFaqFinal } from "@/components/author-faq-final";
+import { BookTocGallery } from "@/components/book-toc-gallery";
+import { HomepageVisualSections } from "@/components/homepage-visual-sections";
+import { DiseaseJourneySection } from "@/components/disease-journey-section";
+import { BookCoverSlot } from "@/components/book-cover-slot";
+import { calculatePricing } from "@/lib/pricing";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+const copy = { price: "বিশেষ মূল্য", free: "সম্পূর্ণ পেমেন্টে বাংলাদেশ পোস্টে ডেলিভারি ফ্রি", cover: "বইয়ের প্রচ্ছদ", sticky: "এখনই অর্ডার করুন →", separator: " • " };
+const taka = (n: number) => "৳" + n.toLocaleString("bn-BD");
+
+export default async function Home() {
+  const settings = await prisma.bookSettings.findFirst();
+  const source = settings ?? BOOK_OFFER;
+  const pricing = calculatePricing(source);
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main>
+      <section className="hero page-shell">
+        <div className="hero-copy">
+          <span className="eyebrow">{HERO_CONTENT.eyebrow}</span>
+          <h1>{HERO_CONTENT.heading}</h1>
+          <p className="author">{HERO_CONTENT.author}</p>
+          <p className="hero-description">{HERO_CONTENT.description}</p>
+          <ul className="hero-facts">
+            {HERO_CONTENT.facts.map((fact) => <li key={fact}>{fact}</li>)}
+          </ul>
+          <div className="hero-price">
+            <span>{copy.price}</span>
+            <strong>{taka(pricing.bookPrice)}</strong>
+            <small>{copy.free}</small>
+          </div>
+          <div className="hero-actions">
+            <a className="button button-primary hero-button" href="/order">
+              {HERO_CONTENT.primaryCta} →
+            </a>
+            <a className="button button-outline hero-button" href="#book-toc">
+              {HERO_CONTENT.secondaryCta}
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        <BookCoverSlot title={BOOK_CONTENT.title} />
+      </section>
+      <div className="trust-bar page-shell">
+        {HERO_CONTENT.trustBar.map((item, index) => (
+          <span key={item}>
+            {index > 0 && <i aria-hidden="true">{copy.separator}</i>}
+            {item}
+          </span>
+        ))}
+      </div>
+      <HomepageVisualSections pricing={pricing} />
+      <BookTocGallery pricing={pricing} />
+      <DiseaseJourneySection pricing={pricing} />
+      <AuthorFaqFinal
+        bookPrice={pricing.bookPrice}
+        postDelivery={pricing.postDeliveryCharge}
+        courierDelivery={pricing.courierDeliveryCharge}
+        courierAdvance={pricing.courierPayNow}
+      />
+      <a className="sticky-cta" href="/order">
+        <strong>{taka(pricing.bookPrice)}</strong>
+        <span>{copy.sticky}</span>
+      </a>
+    </main>
   );
 }

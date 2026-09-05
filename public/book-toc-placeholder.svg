@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">বইয়ের ভেতরের পাতার নমুনা</title><desc id="desc">বইয়ের দুটি পরিষ্কার খালি পাতার গ্রাফিক নমুনা</desc>
+  <rect width="1200" height="760" rx="32" fill="#f4eee3"/><rect x="90" y="80" width="480" height="600" rx="12" fill="#fffdf8" stroke="#d7cbb8" stroke-width="4" transform="rotate(-5 330 380)"/><rect x="630" y="80" width="480" height="600" rx="12" fill="#fffdf8" stroke="#d7cbb8" stroke-width="4" transform="rotate(5 870 380)"/>
+  <g stroke="#b8aa96" stroke-width="8" stroke-linecap="round" opacity=".7"><path d="M170 220h300M160 270h330M170 320h260M730 220h300M720 270h330M730 320h280"/><path d="M190 440h240M180 490h280M750 440h250M740 490h290"/></g>
+</svg>

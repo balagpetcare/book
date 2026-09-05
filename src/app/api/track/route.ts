@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { normalizeBangladeshMobile } from "@/lib/order-validation";
+import { rateLimit, requestIp } from "@/lib/rate-limit";
+export const runtime = "nodejs";
+export async function GET(request: Request) { if (!rateLimit(`track:${requestIp(request)}`, 30, 15 * 60 * 1000)) return NextResponse.json({ error: "Too many tracking attempts. Please try again later." }, { status: 429 }); const url = new URL(request.url); const orderNumber = url.searchParams.get("orderNumber")?.trim(); const mobile = url.searchParams.get("mobile") ?? ""; if (!orderNumber || !mobile) return NextResponse.json({ error: "Order number and mobile are required." }, { status: 400 }); const order = await prisma.order.findFirst({ where: { orderNumber, mobile: normalizeBangladeshMobile(mobile) }, select: { orderNumber: true, status: true, paymentPlan: true, deliveryType: true, paidAmount: true, dueAmount: true, division: true, district: true, upazilaOrThana: true, areaOrVillage: true, postalCode: true, trackingNumber: true, carrierName: true } }); if (!order) return NextResponse.json({ error: "No matching order found." }, { status: 404 }); return NextResponse.json({ order }); }

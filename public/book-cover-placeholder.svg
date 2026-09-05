@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 960" role="img" aria-labelledby="title desc">
+  <title id="title">বইয়ের প্রচ্ছদ</title><desc id="desc">বিড়াল বিষয়ক বইয়ের পরিষ্কার গ্রাফিক প্রচ্ছদ</desc>
+  <rect width="720" height="960" rx="28" fill="#123c35"/><rect x="34" y="34" width="652" height="892" rx="18" fill="none" stroke="#e8bd64" stroke-width="3"/>
+  <circle cx="360" cy="428" r="132" fill="#e8bd64" opacity=".18"/><path d="M270 356l-28-104 94 66c16-5 40-5 56 0l94-66-28 104c22 24 35 55 35 90 0 76-65 138-145 138s-145-62-145-138c0-35 13-66 35-90z" fill="#e8bd64"/>
+  <circle cx="314" cy="433" r="12" fill="#123c35"/><circle cx="406" cy="433" r="12" fill="#123c35"/><path d="M340 475q20 18 40 0M360 475v25" fill="none" stroke="#123c35" stroke-width="8" stroke-linecap="round"/>
+</svg>

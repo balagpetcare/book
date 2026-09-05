@@ -1,0 +1,2 @@
+import Link from "next/link";
+export function PrintLinks({ orderId }: { orderId: string }) { const base = `/admin/orders/${orderId}/print`; return <div className="print-links"><span className="eyebrow">PRINT DOCUMENTS</span><div><Link href={`${base}/details`} target="_blank">Print Order Details</Link><Link href={`${base}/packing`} target="_blank">Print Packing Slip</Link><Link href={`${base}/address-a4`} target="_blank">Print Address Label — A4</Link><Link href={`${base}/address-thermal`} target="_blank">Print Address Label — 4x6 Thermal</Link></div></div>; }

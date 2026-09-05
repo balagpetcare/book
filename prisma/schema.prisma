@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum DeliveryType {
+  BANGLADESH_POST
+  COURIER
+}
+
+enum PaymentPlan {
+  PREPAID_350
+  COURIER_ADVANCE_100
+}
+
+enum PaymentMethod {
+  BKASH
+  NAGAD
+  MANUAL
+  CASH
+}
+
+enum PaymentStatus {
+  AWAITING_PAYMENT
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PAYMENT_SUBMITTED
+  CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum InventoryTransactionType {
+  INITIAL_STOCK
+  PAYMENT_VERIFIED
+  CANCEL_RESTORATION
+  RETURN_RESTORATION
+  MANUAL_ADD
+  MANUAL_REMOVE
+  MANUAL_ADJUSTMENT
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum DispatchStatus {
+  NOT_DISPATCHED
+  DISPATCHED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+model AdminUser {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  passwordHash     String
+  role             AdminRole       @default(ADMIN)
+  name             String?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  verifiedPayments Payment[]       @relation("VerifiedBy")
+  auditLogs        AdminAuditLog[]
+  sessions         AdminSession[]
+  printedOrders    Order[]         @relation("PrintedOrders")
+  dispatchedOrders Order[]         @relation("DispatchedOrders")
+  createdOrders    Order[]         @relation("CreatedOrders")
+  createdBatches   PrintBatch[]    @relation("CreatedBatches")
+  printedBatches   PrintBatch[]    @relation("PrintedBatches")
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminUserId String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
+model BookSettings {
+  id                           String   @id @default(cuid())
+  title                        String
+  author                       String
+  description                  String?
+  initialStock                 Int
+  prepaidPrice                 Int
+  bangladeshPostDeliveryCharge Int      @default(0)
+  courierDeliveryCharge        Int      @default(100)
+  courierTotalPrice            Int
+  courierAdvance               Int
+  courierDue                   Int
+  bkashNumber                  String
+  nagadNumber                  String
+  paymentExpiryHours           Int
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+}
+
+model Order {
+  id                    String                 @id @default(cuid())
+  orderNumber           String                 @unique
+  customerName          String
+  mobile                String
+  alternateMobile       String?
+  email                 String?
+  division              String?
+  district              String
+  upazilaOrThana        String
+  unionOrWard           String?
+  postOffice            String?
+  postalCode            String?
+  areaOrVillage         String
+  roadOrStreet          String?
+  houseOrHolding        String?
+  landmark              String?
+  deliveryInstruction   String?
+  deliveryType          DeliveryType
+  paymentPlan           PaymentPlan
+  status                OrderStatus            @default(AWAITING_PAYMENT)
+  subtotal              Int
+  deliveryCharge        Int
+  grandTotal            Int
+  payNowAmount          Int                    @default(0)
+  paidAmount            Int                    @default(0)
+  dueAmount             Int
+  carrierName           String?
+  trackingNumber        String?
+  confirmedAt           DateTime?
+  shippedAt             DateTime?
+  deliveredAt           DateTime?
+  printedAt             DateTime?
+  printedByAdminId      String?
+  printCount            Int                    @default(0)
+  dispatchedAt          DateTime?
+  dispatchedByAdminId   String?
+  dispatchStatus        DispatchStatus         @default(NOT_DISPATCHED)
+  source                OrderSource            @default(WEB)
+  createdByAdminId      String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  items                 OrderItem[]
+  payments              Payment[]
+  inventoryTransactions InventoryTransaction[]
+  reviews               Review[]
+  printedByAdmin        AdminUser?             @relation("PrintedOrders", fields: [printedByAdminId], references: [id])
+  dispatchedByAdmin     AdminUser?             @relation("DispatchedOrders", fields: [dispatchedByAdminId], references: [id])
+  createdByAdmin        AdminUser?             @relation("CreatedOrders", fields: [createdByAdminId], references: [id])
+  printBatchItems       PrintBatchItem[]
+
+  @@index([mobile])
+  @@index([status, createdAt])
+  @@index([dispatchStatus, createdAt])
+  @@index([trackingNumber])
+  @@index([deliveryType])
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  orderId    String
+  title      String
+  quantity   Int
+  unitPrice  Int
+  totalPrice Int
+  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  status            PaymentStatus @default(AWAITING_PAYMENT)
+  senderMobile      String
+  transactionId     String        @unique
+  amount            Int
+  method            PaymentMethod
+  proofImagePath    String?
+  verifiedAt        DateTime?
+  verifiedByAdminId String?
+  rejectionReason   String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  verifiedByAdmin   AdminUser?    @relation("VerifiedBy", fields: [verifiedByAdminId], references: [id])
+
+  @@index([orderId, status])
+  @@index([status])
+}
+
+model InventoryTransaction {
+  id            String                   @id @default(cuid())
+  orderId       String?
+  type          InventoryTransactionType
+  quantityDelta Int
+  note          String?
+  createdAt     DateTime                 @default(now())
+  order         Order?                   @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+model Review {
+  id            String       @id @default(cuid())
+  orderId       String
+  customerName  String
+  displayName   String
+  rating        Int
+  comment       String?
+  photoPath     String?
+  verifiedBuyer Boolean      @default(false)
+  status        ReviewStatus @default(PENDING)
+  isApproved    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId])
+  @@index([status, createdAt])
+}
+
+model AdminAuditLog {
+  id          String    @id @default(cuid())
+  adminUserId String
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    String?
+  createdAt   DateTime  @default(now())
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([action, createdAt])
+}
+
+model PrintBatch {
+  id               String           @id @default(cuid())
+  batchNumber      String           @unique
+  deliveryMethod   DeliveryType
+  layout           String           @default("12/A4")
+  createdAt        DateTime         @default(now())
+  createdByAdminId String
+  printedAt        DateTime?
+  printedByAdminId String?
+  status           PrintBatchStatus @default(PENDING)
+  items            PrintBatchItem[]
+
+  createdByAdmin AdminUser  @relation("CreatedBatches", fields: [createdByAdminId], references: [id])
+  printedByAdmin AdminUser? @relation("PrintedBatches", fields: [printedByAdminId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([deliveryMethod])
+}
+
+model PrintBatchItem {
+  id        String   @id @default(cuid())
+  batchId   String
+  orderId   String
+  createdAt DateTime @default(now())
+
+  batch PrintBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  order Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, orderId])
+  @@index([orderId])
+}
+
+enum PrintBatchStatus {
+  PENDING
+  PRINTED
+  CANCELLED
+}
+
+enum OrderSource {
+  WEB
+  PHONE
+  SMS
+  MESSENGER
+  WHATSAPP
+  WALK_IN
+  OTHER
+}

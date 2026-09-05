@@ -1,0 +1,173 @@
+
+/* ==========================================================
+   COMMAND 10L-A: MOBILE RESPONSIVE OVERRIDES
+   ========================================================== */
+
+/* GLOBAL CONTAINER FIX */
+.page-shell, .checkout-shell, .track-shell {
+  width: 100% !important;
+  max-width: 1200px !important;
+  padding-left: clamp(16px, 5vw, 32px) !important;
+  padding-right: clamp(16px, 5vw, 32px) !important;
+  box-sizing: border-box !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 1023px) {
+  .checkout-shell, .track-shell { max-width: 860px !important; }
+}
+
+@media (max-width: 767px) {
+  /* ROOT / HOMEPAGE FIXES */
+  .hero {
+    flex-direction: column-reverse !important;
+    text-align: center !important;
+    padding-top: 32px !important;
+    gap: 24px !important;
+  }
+  .hero-copy {
+    align-items: center !important;
+    max-width: 100% !important;
+  }
+  .hero h1 {
+    font-size: clamp(2.2rem, 8vw, 2.8rem) !important;
+    margin: 12px auto !important;
+    line-height: 1.2 !important;
+  }
+  .hero-description {
+    font-size: 1.05rem !important;
+    margin: 0 auto 20px !important;
+    line-height: 1.6 !important;
+  }
+  .hero-facts {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .hero-facts li {
+    min-height: 48px !important;
+    font-size: 0.95rem !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+  .hero-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+  .hero-button {
+    width: 100% !important;
+    min-height: 52px !important;
+  }
+  .cover-frame {
+    width: clamp(240px, 70vw, 340px) !important;
+    margin: 0 auto !important;
+    flex-basis: auto !important;
+  }
+
+  /* TOPIC / FEATURE CARDS */
+  .topic-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .topic {
+    min-height: auto !important;
+    padding: 24px 20px !important;
+  }
+
+  /* FAQ */
+  .faq-list details p {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  /* PRICING GRID */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* JOURNEY GRID */
+  .journey-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* REVIEWS */
+  .review-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* QUICK FACTS */
+  .quick-facts {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ORDER PAGE FIXES */
+  .order-header {
+    grid-template-columns: 1fr !important;
+  }
+  .checkout-form {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .delivery-selector {
+    grid-template-columns: 1fr !important;
+  }
+  .customer-details {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .selected-order-summary, .delivery-selector, .customer-details, .order-trust-block, .checkout-form > .submit-button, .checkout-form > .form-error {
+    grid-column: 1 / -1 !important;
+  }
+  .selected-order-summary {
+    order: 2 !important;
+    position: relative !important;
+    top: auto !important;
+    min-height: auto !important;
+  }
+  .delivery-selector {
+    order: 1 !important;
+  }
+  .customer-details {
+    order: 3 !important;
+  }
+  .order-trust-block {
+    order: 4 !important;
+  }
+  .checkout-form > .form-error {
+    order: 5 !important;
+  }
+  .checkout-form > .submit-button {
+    order: 6 !important;
+  }
+  .plan-option {
+    min-height: auto !important;
+    padding: 16px !important;
+    width: 100% !important;
+  }
+  
+  /* IOS AUTO ZOOM PREVENT & TOUCH TARGETS */
+  input, textarea, select {
+    font-size: 16px !important; 
+  }
+  .customer-details input, .customer-details textarea {
+    min-height: 48px !important;
+  }
+  .customer-details textarea {
+    min-height: 100px !important;
+  }
+  .plan-option input {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+/* TOUCH TARGET MINIMUMS */
+button, .button, .hero-button, .order-button, .submit-button {
+  min-height: 48px !important;
+}
+
+/* RESPONSIVE IMAGES */
+img {
+  max-width: 100% !important;
+  height: auto !important;
+}
