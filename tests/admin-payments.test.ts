@@ -2,7 +2,6 @@ import { describe, it } from "node:test";
 import * as assert from "node:assert";
 
 describe("Admin Payments API & UX (COMMAND 10M-PAY1)", async () => {
-  const BASE_URL = "http://localhost:3000";
 
   describe("LIVE SEARCH & NORMALIZATION", () => {
     it("1. partial sender-number search works", async () => {

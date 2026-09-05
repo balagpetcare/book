@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useRef, useState } from "react";
 
 type Props = {
@@ -182,7 +183,7 @@ export function PaymentForm({
           />
           {preview && (
             <span className="proof-preview">
-              <img src={preview} alt="Selected payment proof" />
+              <Image src={preview} alt="Selected payment proof" width={72} height={72} />
               <span>{fileName}</span>
               <button type="button" onClick={removeFile}>
                 Remove

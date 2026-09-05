@@ -2,7 +2,6 @@ import { describe, it } from "node:test";
 import * as assert from "node:assert";
 
 describe("Admin Orders API - Search and UX (COMMAND 10M-A-FIX1)", async () => {
-  const BASE_URL = "http://localhost:3000";
 
   describe("LIVE SEARCH", () => {
     it("1. partial mobile search works", async () => {
